@@ -1,0 +1,389 @@
+#include "obj.h"
+
+
+#include "assert.h"
+
+// handle writing and reading floats and doubles as IEEE 754
+
+
+
+size_t fwrite_int16be(FILE * dest, uint16_t data) {
+	uint8_t buffer[2];
+	
+	buffer[0] = (data >> 8);
+	buffer[1] = (data);
+	
+	fwrite(buffer, 1, 2, dest);
+}
+
+size_t fwrite_int32be(FILE * dest, uint32_t data) {
+	uint8_t buffer[4];
+	
+	buffer[0] = (data >> 24);
+	buffer[1] = (data >> 16);
+	buffer[2] = (data >> 8);
+	buffer[3] = (data);
+	
+	fwrite(buffer, 1, 4, dest);
+}
+
+size_t fwrite_int64be(FILE * dest, uint64_t data) {
+	uint8_t buffer[8];
+	
+	buffer[0] = (data >> 56);
+	buffer[1] = (data >> 48);
+	buffer[2] = (data >> 40);
+	buffer[3] = (data >> 32);
+	buffer[4] = (data >> 24);
+	buffer[5] = (data >> 16);
+	buffer[6] = (data >> 8);
+	buffer[7] = (data);
+	
+	fwrite(buffer, 1, 8, dest);
+}
+
+size_t fwrite_4cc(FILE * dest, uint32_t fcc) {
+	uint8_t buffer[4];
+	
+	*((uint32_t *) buffer) = fcc;
+	
+	return fwrite(buffer, 1, 4, dest);
+}
+
+/*
+ * 
+ * struct drzw {
+	//char header[HEADER_SIZE];
+	//char header_extra[HEADER_EXTRA_SIZE];
+	
+	int resource_count;
+	int max_offset;
+	
+	drzw_resource * resources;
+	drzw_resource ** resources_last; 
+};
+
+struct drzw_resource {
+	struct drzw_resource * next;
+	
+	int type;
+	int length;
+	int offset;
+	
+	void * data;
+	
+	drzw_rsrc_fwriter writer;
+};*/
+
+
+drzw * drzw_new() {
+	drzw * n = malloc(sizeof(drzw));
+	memset(n, 0, sizeof(drzw));
+	
+	(n->resources_last) = &(n->resources);
+	
+	return n;
+}
+
+int drzw_add_rsrc(drzw * d, drzw_resource * r, bool reserved) {
+	if(reserved) {
+		assert(d->reserved_resources);
+		d->reserved_resources--;
+	}
+	
+	drzw_resource * n = malloc(sizeof(drzw_resource));
+	memcpy(n, r, sizeof(drzw_resource));
+	
+	if(!n->writer) n->writer = &drzw_write_rsrc;
+	
+	d->resource_count++;
+	n->offset = d->max_offset;
+	d->max_offset += n->length;
+	
+	*(d->resources_last) = n;
+	(d->resources_last) = &(n->next);
+	n->next = NULL;
+}
+
+int drzw_write(FILE * dest, drzw * d) {
+	assert(d->reserved_resources == 0);
+	
+	drzw_resource * r = d->resources;
+	
+	fseek(dest,  0, SEEK_SET);
+	
+	fwrite_4cc(dest, strto4cc("drzw"));
+	fwrite_int32be(dest, 0x0000FEFF);
+	fwrite_int32be(dest, 0); // version
+	fwrite_int32be(dest, d->resource_count + d->reserved_resources);
+	
+	int i;
+	
+	for(i = 0; i < d->resource_count; i++, r = r->next) {
+		drzw_write_rsrc_entry(dest, i, r);
+		r->writer(dest, d, r);
+	}
+	
+	assert(d->reserved_resources == 0);
+	
+	/*
+	
+	for(; i < d->resource_count + d->reserved_resources; i++, r = r->next) {
+		drzw_write_rsrc_entry(dest, i, r);
+		r->writer(dest, d, r);
+	}
+	*/
+}
+
+int drzw_write_rsrc(FILE * dest, drzw * d, drzw_resource * r) {
+	long original_pos = ftell(dest);
+	
+	fseek(dest, DATA_AREA(d) + r->offset, SEEK_SET);
+	fwrite(r->data, 1, r->length, dest);
+	
+	fseek(dest, original_pos, SEEK_SET);
+}
+
+int drzw_write_rsrc_entry(FILE * dest, int i, drzw_resource * r) {
+	long original_pos = ftell(dest);
+	
+	fseek(dest, RSRCTBL_AREA + i * RSRC_REC_SIZE, SEEK_SET);
+	fwrite_int32be(dest, r->type);
+	fwrite_int32be(dest, r->length);
+	fwrite_int32be(dest, r->offset);
+	
+	fseek(dest, original_pos, SEEK_SET);
+}
+
+int write_rsrc_proc(FILE * dest, drzw * d, drzw_resource * r) {
+	long original_pos = ftell(dest);
+	
+	fseek(dest, DATA_AREA(d) + r->offset, SEEK_SET);
+	//fwrite(r->data, 1, r->length, dest);
+	
+	proc_t * p = (proc_t *)r->data;
+	fwrite_int32be(dest, p->name ? add_rsrc_string(d, p->name, true) : 0);
+	
+	fwrite_int32be(dest, p->args_size);
+	fwrite_int32be(dest, p->ret_size);
+	fwrite_int32be(dest, p->clos_size);
+	fwrite_int32be(dest, p->locals_size);
+	fwrite_int32be(dest, p->ops_size);
+	fwrite_int32be(dest, p->code_size);
+	if(p->code) fwrite(p->code, 1, p->code_size, dest);
+	
+	fseek(dest, original_pos, SEEK_SET);
+}
+
+int add_rsrc_proc(drzw * d, proc_t * p, bool reserved) {
+	drzw_resource r;
+	memset(&r, 0, sizeof(drzw_resource));
+	
+	r.type = strto4cc("proc");
+	r.length = 28 + p->code_size;
+	r.data = p;
+	
+	r.writer = &write_rsrc_proc;
+	
+	if(!reserved && p->name) d->reserved_resources++;
+	
+	return drzw_add_rsrc(d, &r, reserved);
+}
+
+int add_rsrc_string(drzw * d, const char * p, bool reserved) {
+	drzw_resource r;
+	memset(&r, 0, sizeof(drzw_resource));
+	
+	r.type = strto4cc("str ");
+	r.length = strlen(p);
+	r.data = (void *) p;
+	
+	r.writer = NULL;
+	
+	return drzw_add_rsrc(d, &r, reserved);
+}
+
+int write_rsrc_cp(FILE * dest, drzw * d, drzw_resource * r);
+
+int add_rsrc_cp(drzw * d, constpool * p) {
+	drzw_resource r;
+	memset(&r, 0, sizeof(drzw_resource));
+	
+	r.type = strto4cc("CNST");
+	r.length = p->size * CP_REC_SIZE;
+	r.data = p;
+	
+	r.writer = &write_rsrc_cp;
+	
+	int i = 0;
+	for(; i < cp->size; i++) {
+		if(p->type[i] == strto4cc("str ")) d->reserved_resources++;
+		else if(p->type[i] == strto4cc("proc")) {
+			d->reserved_resources++;
+			if(p->cp[i]._proc->name) d->reserved_resources++;
+		}
+		
+		if(p->type[i] == strto4cc("l   ")) i+= 1;
+		else if(p->type[i] == strto4cc("q   ")) i+= 3;
+	} 
+	
+	r.writer = &write_rsrc_cp;
+	
+	return drzw_add_rsrc(d, &r, false);
+}
+
+int write_rsrc_cp(FILE * dest, drzw * d, drzw_resource * r) {
+	long original_pos = ftell(dest);
+	
+	
+	//fwrite(r->data, 1, r->length, dest);
+	
+	constpool * p = (constpool *)r->data;
+	
+	int i = 0;
+	for(; i < cp->size; i++) {
+		fseek(dest, DATA_AREA(d) + r->offset + i * CP_REC_SIZE, SEEK_SET);
+		
+		fwrite_int32be(p->type[i]);
+		fwrite_int32be(p->external[i] ? 1 : 0);
+		
+		if(p->type[i] == strto4cc("str ")) fwrite_int32be(add_rsrc_string(d, p->cp[i]._str, true));
+		else if(p->type[i] == strto4cc("proc")) fwrite_int32be(add_rsrc_proc(d, p->cp[i]._proc, true));
+		
+		
+	}
+	
+	fseek(dest, original_pos, SEEK_SET);
+}
+
+/*
+	name			:4byte rsrc index of string
+	args size		:4byte uint
+	return size		:4byte uint
+	clos size		:4byte uint
+	locals size		:4byte uint
+	ops size		:4byte uint
+	code size		:4byte uint (number of bytes)
+	code			variable lengh code
+}
+
+int count_rsrc(int size, int * t) {
+	int strt = strto4cc("str "), proct = strto4cc("proc");
+	
+	int lt = strto4cc("l   "), qt = strto4cc("q   ");
+	
+	int i, count = 0;
+	for(i = 0; i < size; i++)
+		if(t[i] == strt || t[i] == proct) count++;
+		else if(t[i] == lt) i++; // double word
+		else if(t[i] == lt) i += 3; // quad word
+	
+	return count;
+}
+
+int add_rsrc_string(FILE * dest, int * i, int * offset, const char * str) {
+	long original_pos = ftell(dest);
+	int index = *i;
+	
+	int l = strlen(str);
+	
+	fseek(dest, 64 + (*i)++ * RSRC_REC_SIZE, SEEK_SET);
+	fwrite_4cc(dest, strto4cc("str "));
+	fwrite_int32be(dest, l); 
+	fwrite_int32be(dest, (*offset)); 
+	
+	fseek(dest, (*offset), SEEK_SET);
+	*offset += l;
+	fwrite(str, 1, l, dest);
+	
+	fseek(dest, original_pos, SEEK_SET);
+	return index;
+}
+/*
+int add_rsrc_proc(FILE * dest, int * i, int * offset, proc_t * p) {
+	long original_pos = ftell(dest);
+	int index = *i;
+	
+	fseek(dest, 64 + (*i)++ * RSRC_REC_SIZE, SEEK_SET);
+	fwrite_4cc(dest, strto4cc("proc"));
+	fwrite_int32be(dest, 28 + p->code_size); 
+	fwrite_int32be(dest, (*offset)); 
+	
+	fseek(dest, *offset, SEEK_SET);
+	*offset += 28 + p->code_size;
+	fwrite_int32be(dest, p->name ? add_rsrc_string(dest, i, offset, p->name) : 0);
+	fwrite_int32be(dest, p->args_size);
+	fwrite_int32be(dest, p->ret_size);
+	fwrite_int32be(dest, p->clos_size);
+	fwrite_int32be(dest, p->locals_size);
+	fwrite_int32be(dest, p->ops_size);
+	fwrite_int32be(dest, p->code_size);
+	if(p->code) fwrite(p->code, 1, p->code_size, dest);
+	
+	fseek(dest, original_pos, SEEK_SET);
+	return index;
+	/*
+	name			:4byte rsrc index of string
+	args size		:4byte uint
+	return size		:4byte uint
+	clos size		:4byte uint
+	locals size		:4byte uint
+	ops size		:4byte uint
+	code size		:4byte uint (number of bytes)
+	code			variable lengh code
+}*/ /*
+
+int add_rsrc(FILE * dest, int * i, int * offset, int type, int length) {
+	long original_pos = ftell(dest);
+	int index = *i;
+	
+	fseek(dest, 64 + (*i)++ * RSRC_REC_SIZE, SEEK_SET);
+	fwrite_4cc(dest, type);
+	fwrite_int32be(dest, length); 
+	fwrite_int32be(dest, (*offset));
+	
+	(*offset) += length; 
+	
+	fseek(dest, original_pos, SEEK_SET);
+	return index;
+}
+
+int save_object_file(FILE * dest, int entry, constpool * cp, linkinfo * li) {
+	int resource_count = 3 + 1 + li->imports_size + li->exports_size + count_rsrc(cp->size, cp->type);
+	int resource_offset = 64 + resource_count;
+	int resource_i = 0; 
+	
+	//add_rsrc(dest, &resource_i, &resource_offset);
+	
+	fseek(dest, 0, SEEK_SET); // header
+	
+	fwrite_4cc(dest, strto4cc("drzw"));
+	fwrite_int32be(dest, 0x0000FEFF);
+	fwrite_int32be(dest, 0); // version
+	fwrite_int32be(dest, resource_count);
+	
+	fwrite_int32be(dest, cp->size); 
+	fwrite_int32be(dest, li->imports_size); 
+	fwrite_int32be(dest, li->exports_size); 
+	
+	fwrite_int32be(dest, 0);  // name (temporary)
+	fwrite_int32be(dest, li->exports_size); 
+	
+	
+	
+	
+	// total resources = 
+	//		3 (pool, imp, exp)
+	//	+	1 object name
+	//  +	1 * export count
+	//	+	1 * import count
+	//	+	proc count
+	//	+	string count
+	//	+	serialized data count.
+	
+	
+}
+*/
+
+
+// BUILD THE RESOURCE TABLE AS A LINKED LIST BEFORE ANY WRITING

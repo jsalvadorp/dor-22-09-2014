@@ -1,0 +1,22 @@
+Error a := Error a | ()
+
+Resource r ::= interface
+	open :: r -> void
+	close :: r -> void
+
+implement (Resource File)
+	Resource.open = File.open
+	Resource.close = File.close	
+
+macro
+	letrsrc 
+
+letrsrc 
+		lib (dlopen "libgl")
+		connection (opens "345")
+	
+	func = dlsym lib "hi"
+
+
+	
+		

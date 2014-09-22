@@ -1,0 +1,188 @@
+// inception se parece a paprika neuromancer cite des enfants perdus
+
+// wiki.jvmlangsummit.com/ images/ 2/ 2b/ JVMLanguageSummit_Stadler_Continuations.pdf 
+
+saguaro stack where the top of stack is the bottom. returns in a loop. perhaps with
+continuations
+base case?
+
+sizes
+		b 1 byte
+		s 2 bytes
+		
+		w 1 word (implicit). must fit all types, except long and double. (but it can fit them). usually size of a pointer in the platform. at least 32bit.
+		l 2 words. fits long, double, and an atom (value + typepointer).
+		q 4 words (what?)
+
+types	
+		i int
+		f float
+		c char
+		p pointer
+		a atom
+		
+		u unsigned
+
+comparison
+		eq
+		ne
+		gt
+		lt
+
+flags
+		z
+		nz
+		n
+		p
+		c
+		v
+
+addressing
+		immediate
+		from environment/costant pool
+		
+
+.func factorial(n):
+	ldarg 0
+	dup 			; dup single word
+	
+(define (factorial n)
+	(if (zero? n)
+		1
+		(* n (factorial (- n 1)))
+	)
+)
+
+do something about the constant pool/environment
+
+
+
+registers
+	op  - top of operand stack
+	arg - list of arguments
+	pc  - instruction pointer
+	
+	loc - locals base pointer (necessary?), current frame
+	env - used by closures only.
+
+instructions secd machine
+	nop
+	ldnil
+	ldi <arg> - load immediate value arg into opstack
+	ldc <arg> - load constant at index arg from constant pool
+	ldarg <arg> - load argument arg
+	starg <arg>
+	ldloc <arg> - load local arg
+	stloc <arg>
+	ldcl <depth> <arg> - load variable from closure. depth is closure depth
+	stcl <depth> <arg>
+		-- provide ldcl.0 and stcl.0. for compactness.
+	mul
+	add
+	sub
+	div
+	rem
+	call
+		-- suport tail calling. either recursive (simply jmp, recall, recur)
+		-- or to other functions (by removing the current frame and calling)
+	local branching, conditional and nonconditional (goto). no need for relative addressing
+	ret
+	dup
+	pop
+	comparison
+	bitwise
+	binary logic
+	nop
+	breakpoint
+	ap - apply
+	
+	? sel
+	? call from stack: pop funcpointer from opstack, call it. 
+
+calling a function:
+	arg = op - argc_called - returnaddresslength
+	pc = code_called
+	op = new_frame
+
+returning a value:
+	pc = arg[argc] justo despues de los argumentos esta 
+	arg[0] = top of opstack
+
+//http://www.cs.sjsu.edu/~pearce/modules/labs/compOrg/jasmin/ajvm/TestJVM.java
+
+
+frame
+	args
+	locals
+	regs
+		function id or pointer
+		flags // has it been captured?
+		pc
+		op
+		closure ptr ??
+	operands
+	
+	
+// format. something like this
+
+.module mymodule
+
+.pool ; all symbolic references. some are resolved in compilation,
+	  ; some in dynamic linking, either loading the executable
+	  ; or afterwards. (!). plus size (in words) or type.
+	main proc
+	factorial proc
+	msg str "Hello! the factorial of 6 is "
+	; 1 word: str i32 i16 i8 proc ref float
+		w 1 (unspecified value)
+	; 2 word: i64 double 
+		l 2 (unspecified value)
+	
+	
+.extern
+	builtin::printint 
+	builtin::printstr 1 
+.end
+
+; define symbol table
+
+.proc factorial
+		.args 1
+		.ops 2
+		ldarg 0
+		jiz end
+		dup
+		dec
+		call factorial
+		mul
+		ret
+end:	ldi 1
+		ret
+.end
+
+.proc main
+	.entrypoint
+	.ops 1
+	ldc msg
+	call builtin::printstr
+	ldi 6
+	call factorial
+	call builtin::printint
+	ret
+.end
+
+; lisplike
+
+(defproc factorial
+		(args 1)
+		(ops 2)
+		(ldarg 0)
+		(jiz end)
+		(dup)
+		(dec)
+		(call factorial)
+		(mul)
+		(ret)
+end:	(ldi 1)
+		(ret) )
+	

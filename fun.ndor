@@ -1,0 +1,155 @@
+digit :: int -> int
+digit n = $0 + n
+
+undigit :: int -> int
+undigit n = n - $0
+
+prueba :: int -> int -> int -> int -> int -> int
+prueba a b c d e = a + b + c + d + e
+
+puti :: int -> void
+puti n = do
+	cond
+		(n < 0)
+			putc $-
+			puti (0 - n)
+		(n >= 10)
+			puti (n / 10)
+		else
+			()
+	putc (digit (n % 10))
+
+
+fun :: int, (int, int), bool -> int
+fun a = match a
+	(0, (n, 1), true)
+		n
+	(m, (5, 4), false)
+		4
+	(c, (d, e), x)
+		c + d + e
+
+fac :: int -> int
+fac n = cond
+	(n == 0)
+		1
+	else
+		n * fac (n - 1)
+
+getint :: void -> int
+getint () = do
+	var x (getc ())
+	var res 0
+	
+	while (x != $\n)
+		res <- 10 * res
+		res <- res + undigit x
+		x <- getc ()
+		
+	res
+
+app :: (int -> int) -> int -> int
+app f n = f (n * n)
+
+fac2 :: int -> int
+fac2 n = match n
+	0
+		1
+	n
+		n * fac2 (n - 1)
+	
+intlist := nil | cons int intlist
+
+length :: intlist -> int
+length l = match l
+	nil
+		0
+	(cons a b)
+		1 + length b
+
+add :: int -> int -> int
+add a b = a + b
+
+foldr :: (int -> int -> int) -> int -> intlist -> int
+foldr f v l = match l
+	nil
+		v
+	(cons x xs)
+		(f x (foldr f v xs))
+		
+foldl :: (int -> int -> int) -> int -> intlist -> int
+foldl f v l = match l
+	nil
+		v
+	(cons x xs)
+		foldl f (f v x) xs
+		
+foreach :: (int -> void) -> intlist -> void
+foreach f l = match l
+	nil
+		()
+	(cons x xs)
+		f x
+		foreach f xs
+
+car :: intlist -> int
+car l = match l
+	(cons x xs)
+		x
+
+cdr :: intlist -> intlist
+cdr l = match l
+	(cons x xs)
+		xs
+
+cadr :: intlist -> int
+cadr l = car (cdr l)
+
+caddr :: intlist -> int
+caddr l = car (cdr (cdr l))
+
+damefac :: void -> int -> int
+damefac () = fac
+
+neg :: int -> int
+neg n = 0 - n
+
+(<<) :: (int -> int) -> (int -> int) -> int -> int
+(<<) f g x = f (g x)
+
+main :: void -> void
+main () = do
+	puti (fun (0, (7, 1), true))
+	puti (fun (3, (5, 4), false))
+	puti (fun (3, (5, 4), true))
+	puti (fun (1, (5, 6), false))
+	putc $\n
+	
+	var l (cons 1 (cons 2 (cons 3 nil)))
+	l <- cons 1 l
+	
+	puti (length l)
+	putc $\n
+	puti (foldr add 0 l)
+	putc $\n
+	
+	puti (damefac () 5)
+	putc $\n
+	
+	foreach puti l
+	putc $\n
+	
+	var nf (neg << fac)
+	
+	puti (nf 5)
+	
+	;puti (neg << fac 5)
+	
+	;var i (getint)
+	
+	;while i >= 0
+	;	puti (fac2 i)
+	;	putc $\n
+	;	i <- (getint)
+
+

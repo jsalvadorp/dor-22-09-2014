@@ -1,0 +1,32 @@
+digit :: int -> int
+digit n = $0 + n
+
+undigit :: int -> int
+undigit n = n - $0
+
+puti :: int -> void
+puti n = do
+	cond
+		n < 0 => do
+			putc $-
+			puti (0 - n)
+		n >= 10 => puti (n / 10)
+		else => ()
+	putc (digit (n % 10))
+	
+fac :: int -> int
+fac n = match n
+	0 => 1
+	x => x * fac (x - 1)
+
+gcd :: (int, int) -> int
+gcd(a,b) = match b
+	0 => a
+	b => gcd(b, a % b)
+	
+main :: void -> void
+main () = do
+	puti (fac 5)
+	putc $\n
+	puti (gcd(12,18))
+	putc $\n

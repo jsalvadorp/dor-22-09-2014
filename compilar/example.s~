@@ -1,0 +1,155 @@
+.object example
+
+.pool 9
+	0: factorial proc
+	tailfac proc
+	main proc
+	add1 proc
+	printermaker proc
+	printer proc
+	fib proc
+.extern
+	6: builtin::printint proc
+	builtin::readint proc
+.end
+
+.import
+	6 builtin::printint
+	7 builtin::readint
+.end
+
+.export
+	2 main
+	0 factorial
+.end
+
+.proc fib
+	.args 1
+	.ops 3
+	.rets 1
+
+	ldarg 0
+	brz case0
+	
+	ldarg 0
+	ldi 1
+	sub
+	brz case1
+	
+	ldarg 0
+	ldi 1
+	sub
+	call fib
+	
+	ldarg 0
+	ldi 2
+	sub
+	call fib
+	
+	add
+	ret
+
+case0:
+case1:	
+	ldi 1
+	ret
+.end
+
+.proc add1
+	.args 1
+	.ops 2
+	.rets 1
+	ldarg 0
+	ldi 1
+	add
+	ret
+.end
+
+.proc factorial
+		.args 1
+		.ops 2
+		.rets 1
+		ldarg 0
+		brz fin
+		ldarg 0
+		ldi 1
+		sub
+		call factorial
+		ldarg 0
+		mul
+		ret
+fin:	ldi 1
+		ret
+	
+.end
+
+.proc tailfac
+		.args 2
+		.ops 3
+		.rets 1
+		
+		ldarg 0
+		brz fin
+		ldarg 0
+		ldi 1
+		sub
+		ldarg 0
+		ldarg 1
+		mul
+		tail.call tailfac
+		ret
+fin:	ldarg 1
+		ret
+	
+.end
+
+.proc printermaker
+	.args 1
+	.ops 2
+	.rets 1
+	ldarg 0
+	ldc printer
+	clos
+	ret
+.end
+
+.proc printer
+	.args 0
+	.ops 1
+	.clos 1
+	.rets 0
+	ldcl 0
+	call builtin::printint
+	ret
+.end
+
+.proc main
+	.entry
+	.ops 4
+	.locals 1
+	.rets 1
+	call builtin::readint
+	call factorial
+	call builtin::printint
+	ldi 3
+	call printermaker
+	stloc 0
+	ldloc 0
+	callcl
+	ldloc 0
+	callcl
+	call builtin::readint
+	ldi 1
+	call tailfac
+	call builtin::printint
+	
+	ldi 90
+	call builtin::printint
+	
+	call builtin::readint
+	call fib
+	call builtin::printint
+	
+	ret
+.end
+	

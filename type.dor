@@ -1,0 +1,93 @@
+; List a := Nil | Cons a (List a)
+
+; List :: * -> *
+
+; Nil :: a => List a
+; Cons :: a => a -> List a -> List a
+
+digit :: int -> int
+digit n = $0 + n
+
+undigit :: int -> int
+undigit n = n - $0
+
+prueba :: int -> int -> int -> int -> int -> int
+prueba a b c d e = a + b + c + d + e
+
+puti :: int -> void
+puti n = do
+	cond
+		n < 0
+			putc $-
+			puti 0 - n
+		n >= 10
+			puti n / 10
+		else
+			()
+	putc (digit n % 10)
+
+Kind := Star | KFun Kind Kind | KError
+Type := TInt | TFunc | TConst int | TVar int | TApp Type Type | TAbs int Type | TForall int Type
+Exp := EInt int | EConst int | EVar int | EApp Exp Exp | EAbs int Exp
+
+printkind :: Kind -> void
+printkind k = match k
+	Star
+		puts "*"
+	(KFun a b)
+		match a
+			Star
+				puts "*"
+			else
+				puts "("
+				printkind a
+				puts ")"
+		puts " -> "
+		printkind b
+
+Int :: int
+Int = 0
+Bool :: int
+Bool = 1
+True :: int
+True = 1
+False :: int
+False = 0
+
+band :: bool -> bool -> bool
+band a b = cond
+	a
+		b
+	else
+		false
+
+kindeq :: Kind -> Kind -> bool
+kindeq a b = match (a, b)
+	Star, Star
+		true
+	(KFun x y), (KFun z w)
+		band (kindeq x z) (kindeq y w)
+	else
+		false
+
+matchKApp :: Kind -> Kind -> Kind
+matchKApp abs arg = match abs
+	(KFun from to)
+		cond
+			(kindeq from arg)
+				to
+			else
+				KError
+
+;kindof :: Type -> Kind
+;kindof t = match t
+;	TInt
+;		Star
+;	(TApp abs arg)
+;		matchKApp (kindof abs) (kindof arg)
+;	(TAbs from to)
+		
+main :: void -> void
+main () = do
+	printkind (KFun (KFun Star Star) Star)
+	putc $\n

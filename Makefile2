@@ -1,0 +1,46 @@
+CC=gcc
+CFLAGS=-c -std=c99
+DFLAGS=-g
+LFLAGS=-lncurses -lreadline -lrt
+
+all: cons main string types gc
+	$(CC) $(LFLAGS) *.o -o dor
+	
+relink: 
+	$(CC) $(LFLAGS) *.o -o dor
+
+debug: consd maind stringd typesd gcd
+	$(CC) $(LFLAGS) $(DFLAGS) *.o -o dor
+	
+cons:
+	$(CC) $(CFLAGS) cons.c
+
+main:
+	$(CC) $(CFLAGS) dor.c
+	
+string:
+	$(CC) $(CFLAGS) string.c
+
+types:
+	$(CC) $(CFLAGS) types.c
+
+gc:
+	$(CC) $(CFLAGS) gc.c
+	
+consd:
+	$(CC) $(CFLAGS) $(DFLAGS) cons.c
+
+maind:
+	$(CC) $(CFLAGS) $(DFLAGS) dor.c
+	
+stringd:
+	$(CC) $(CFLAGS) $(DFLAGS) string.c
+
+typesd:
+	$(CC) $(CFLAGS) $(DFLAGS) types.c
+
+gcd:
+	$(CC) $(CFLAGS) gc.c
+	
+clean:
+	rm -rf *.o dor

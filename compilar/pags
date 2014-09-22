@@ -1,0 +1,29 @@
+http://wiki.call-cc.org/chicken-compilation-process
+http://wiki.call-cc.org/chicken-internal-structure
+http://home.pipeline.com/~hbaker1/CheneyMTA.html
+http://www.call-cc.org/
+http://www.artima.com/insidejvm/ed2/jvm2.html
+
+
+http://www.cs.sjsu.edu/~pearce/modules/labs/compOrg/jasmin/ajvm/TestJVM.java
+
+
+ldarg
+ldargl
+
+ind.ldarg 0
+ldcl
+stcl
+
+callc
+
+****
+http://www.cubrid.org/blog/dev-platform/understanding-jvm-internals/
+
+
+GC
+http://javarevisited.blogspot.mx/2011/04/garbage-collection-in-java.html
+http://chaoticjava.com/posts/how-does-garbage-collection-work/
+http://javabook.compuware.com/content/memory/how-garbage-collection-works.aspx
+? http://llvm.org/docs/GarbageCollection.html
+

@@ -1,0 +1,11 @@
+import abd.dec
+
+fib :: Int -> Int
+fib n =
+	let loopf (num n acc 1)
+		cond
+			zn == 0
+				acc
+			else
+				loopf {n - 1} {n * acc}
+

@@ -1,0 +1,243 @@
+2/2014
+Proposals
+
+Macros
+
+Metador, macro system at the ast level with powerful pattern matching
+and hygiene. consider
+different macros for top level and expression level??
+hygiene? how should it know that it's lang.if, lang.false, lang.true and
+not some redefinition of them?? turing-completeness? metacircular compiler?
+
+example: 
+quasi is quasiquote
+@ is unquote
+@@ is unquote splicing
+. is gensym
+
+
+macro for @i from @start to @end @@body... = do
+	@i := v
+	while @i <= top
+		@@body
+		@i += 1
+		
+macro inc @var = (@var += 1)
+
+macro quit = (exit 0)
+
+; lazy binary ops
+macro (&&) @a @b = (if @a @b false)
+macro (||) @a @b = (if @a true @b)
+
+
+
+infix operator definition. a set of characters treated by default
+as operators +-<>|%... and the rest as symbols. to invert, symbols
+as ops are preceded by backquote `cons, operators as symbols with
+parens (+)
+
+infixr <+> 3
+
+a <+> b = ...
+
+
+Mutability
+
+'Place' definition: a typeclass sort of thing that defines getters 
+and setters for certain expressions. Setters are automatically used if
+the expression appears on the left side of assignment. Field offsets
+should not be exported, only getters and setters to avoid fragile base
+class problems. Only locals are mutable by default, anything else must
+be declared so.
+
+
+
+appj
+if(top.clos + arg < top.arity)
+	clo = pop
+	clo.add(pop arg elements)
+	pc += sizeofappj*(arg - 1)
+else if(top.clos + arg > top.arity) ; double call!!
+	clo = pop
+	push(clo.args) ; preserve order! memcpy
+	call clo.fun BUT retaddress is pc + sizeofappj*(the difference - 1)
+else ; total application
+	clo = pop
+	push(clo.args)
+	call clo.fun BUT retaddress is just after the appj table...
+	
+Myvoid = Myvoid void
+
+Myvoid :: void -> Myvoid
+
+Classes as interfaces + modules + type
+
+class Persona
+	name :string
+	age :int
+	
+	saludar :: Persona -> string
+	saludar self = "Hola, " ++ self.name ++ "."
+	
+-- becomes
+
+module Persona
+	type t = tconst _name :string _age :int
+	
+	iface (i p)
+		name :: p -> string
+		age :: p -> int
+		saludar :: p -> string
+	
+	impl (i t)
+		name self = self#name
+		age self = self#age
+		saludar self = "Hola, " ++ self.name ++ "."
+		
+	type Persona = p :i => p
+	
+	Persona :: string -> int -> Persona
+	Persona name age = tconst name age
+	
+class MyApp
+	receive_message msg = match msg.what
+		Event.ButtonClicked => alert "Got it"
+	
+	start () = do
+		mainwindow := build_UI
+			Window
+				title => "Hello World"
+				
+				Label "Hello"
+				Button ""...ss
+
+main args = do
+	app := MyApp "mx.itesm.Ejemplo1"
+	run app
+	0
+
+Person
+	name :string
+	age :int
+	
+save_sql p
+
+
+accesors:
+
+
+
+type Property c v = Property get :(c -> v) set :(c -> v -> void)
+type Person = Person name :string age :int friend :Person
+
+Person.name :: Property Person string
+Property.set Person.name :: Person -> string -> void
+Property.get Person.name :: Person -> string
+
+type Element c k v = Element get :(c -> k -> v) set :(c -> k -> v -> void)
+
+iface (Container c)
+	get :: k v => c k v 
+
+array # index :: Element 
+
+
+name and age are top level accesors
+
+typemodule Person = Person 
+
+interface vtables:
+
+type PrintableList = a :Printable => PrintableList (List a)
+PrintableList :: a :Printable => List a -> PrintableList
+
+storage:
+PrintableList
+	vatble 'Printable'
+	List of a:Printable
+	
+	
+interface (Functor f)
+	fmap :: a b => (a -> b) -> f a -> f b
+
+Declares a vtable definition:
+	struct Functor.vtbl
+		fmap (2 args)
+And a global function:
+	fmap :: f :Functor a b => (a -> b) -> f a -> f b
+	def fmap:
+		lda 2
+		lda 1
+		lda 0
+		vapp 0 2 ; apply virtual method 0, 2 arguments
+
+at :: a => List a -> int -> Maybe a
+at list index = match list, index
+	(List x _), 0  => Just x
+	(List x xs), n => Just (at xs (n - 1))
+	Nil, _         => Nothing
+
+
+iface (Functor f) 
+	map :: a b => (a -> b) -> f a -> f b
+	vmap :: a => (a -> void) -> f a -> void
+	
+a | b = b a
+
+Stream x = ... // concurrent communication channels, like go chans, push pull
+// monadic map on futures
+Enumerator x = ... // nonconcurrent, pulls
+
+make stream from enumerator with buffer size 23, etc...
+
+impl (Functor Stream)
+	...
+	
+genprimes () | vmap println
+
+coroutine multiplexing onto threads!!
+
+
+modules and compilation:
+
+// complain of ambiguous symbols when importing
+
+std/
+	List/
+		List.dor
+
+Main/
+	Main.dor
+
+;;;; List.dor	
+
+module std.List
+
+export
+	List
+	Nil
+	foldl
+	map
+
+type List t = List t (List t) | Nil
+
+foldl f v l = match l
+	Nil			=> v
+	List x xs	=> List (f x) (foldl f v xs)
+
+map f = foldl (List << f) Nil
+
+;;;; Main.dor
+
+module Main
+
+import std.List
+
+lista = List 1 \List 2 \List 3 Nil
+
+main () = vmap println lista
+
+
+
+

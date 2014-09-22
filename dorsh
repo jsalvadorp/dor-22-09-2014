@@ -1,0 +1,54 @@
+l w | map (get `name) 
+
+
+lsn = ls w |: get `name
+
+relational database file system, prolog windows registry
+
+
+dor shell - relaxed syntax, allowing regex and paths. commands are functions, function composition. monads? implicit map and laziness? pipes!
+type safety or dynamic types?? structures data, raw data, both?
+
+aim - more abbreviated than dor, more powerful than sh. still more elegant than perl or awk: functional, not procedural or stringbased. new paradigm unlike unix: typed, structured data.
+
+every program is a function (or monad), filter.
+
+streams are laxy typed lists. a normal unix stream is a (stream byte)
+
+w
+	current dir
+`symbol
+	a symbol
+|
+	connects streams in a producer consumer at
+map
+m
+	maps an action to a stream
+|:
+	pipemap
+#atr n
+	shorthand for get `atr n
+~
+	flag
+_
+	placeholder
+^
+	lambda
+?
+	start filepath
+;
+	more lines same instruction
+
+l = ls
+lsn = l w |: _#name
+newmusic = ^ ls << getdir $0 |: tomp3
+
+getdir x = if (isdir x) x (decompress x)
+
+tomp3 = lame ~V0
+
+
+better syntax
+
+identifiers must appear only in the beginning of a command. after that they must start with $, rest is raw data, group with (), flags with ~
+		

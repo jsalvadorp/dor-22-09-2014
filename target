@@ -1,0 +1,14 @@
+interface Functor f
+	map :: a b => (a -> b) -> f a -> f b
+
+module type List a = List a (List a) | Nil
+
+instance Functor List
+	map f l = match l
+		List.Nil
+			List.Nil
+		List x xs
+			List (f x) (map f xs)
+
+
+

@@ -1,0 +1,12 @@
+
+
+
+main () = do
+	connection <= Socket.open "123.12.12.12" 6553
+	connection#write "Hello there"
+	
+impl OutStream File
+	write = socket-write
+	close = socket-close
+
+

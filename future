@@ -1,0 +1,38 @@
+
+
+
+
+
+> ls Music |> filter (== "Swans") << artist |> play
+
+> session |> write
+
+
+; structs are records with a default constructor, a null constructor
+
+struct Employee
+	name :string
+	salary :int
+	boss :Employee
+
+module Employee (Employee, name, salary, boss, nil)
+	Employee := nil | Employee string int Employee
+	name (Employee n s b) = n
+	salary (Employee n s b) = s
+	boss (Employee n s b) = b
+
+	; what to do with nil...
+
+
+
+Employees <- table Employee
+
+insert-into Employees
+	Employee ~name "Juan" ~salary 5000 ~boss nil
+
+
+select
+
+
+
+

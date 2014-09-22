@@ -1,0 +1,149 @@
+dobject (dorszawa container format)
+
+header is record (64 bytes) with
+// dorszawa container info:
+	magic number :4byte = "drzw" regardless of byteorder
+	byte order :4byte = 0x00 00 FE FF (bigendian) or 0xFF FE 00 00 (little endian). 
+		**** THE DOBJECT FORMAT SHOULD ALWAYS BE BIGENDIAN. FINAL RELEASES SHOULD
+			 REJECT LITTLEENDIAN MARK ****
+	container format version :4byte = 0x00 00 00 00 for the time being
+	resource count :4byte uint (number of records in resource table)
+	
+// dobject specifics:
+	constant pool size :4byte uint (number of words)
+	imports count :4byte uint (number of records)
+	exports count :4byte uint (number of records)
+	
+	fully qualified name of module :4byte (rsrc index to string)
+	entrypoint :4byte (rsrc index to proc)
+
+	ignored space (for other uses) :24byte
+
+resource table  is list of
+	tlo is record (12 bytes) with
+		type	:4byte FourCC
+		length	:4byte uint (number of bytes)
+		offset	:4byte offset
+			** offset from the end of resource table. that is, 
+				sizeof header + sizeof resource table
+						64	  +	rsrc count * 12                 **
+	
+		**** FIRST 4 ENTRIES MUST BE:
+			null entry:		type = NULL,
+							length = 0,
+							offset = 0
+			constant pool: 	type = CNST, 
+							length = constant count * 16, 
+							offset = 0
+			
+			imports:	 	type = IMPO, 
+							length = import count * 8, 
+							offset = constant pool length
+							
+			exports:	 	type = EXPO, 
+							length = export count * 8, 
+							offset = constant pool length + imports length
+			
+			
+		
+		
+		 ****
+	
+constant pool is list of
+	constant is record with
+		type :4byte FourCC
+		external :4byte boolean ** should be flags
+		value :8byte 
+			(either the data itself if it is 1 or 2 32bit words or the rsrc index)
+			(if it's 1 word or a rsrc index (4 bytes), then it will be that followed
+				by 4 zeroed bytes) 
+			(ignored if external)
+
+exports is list of
+	export is record with
+		name :4byte rsrc index of a string
+		constant pool index :4byte uint
+
+imports is list of
+	import is record of
+		fully qualified name :4byte rsrc index if a string
+		constant pool index :4byte uint
+	
+
+	
+resources area is contiguous list of
+	resource is variable length data
+
+
+
+
+///////////////////////////////////////77
+
+TODO: include more advanced type info in exports and imports!! for 
+correct matching during linking.
+
+TODO: include information for module hierarchy. as to make it easy to 
+relate (equate?) modules and linkunits/dobjects. (not equate. one module
+can span several dobjects. constant names and which are external or
+internal is information relevant only inside the module. imports and 
+exports connect to other modules)
+
+
+
+
+type of resource can be:
+	'u8s ' // utf8 string. not null terminated
+	'str ' // ascii string. not null terminated
+	'proc'
+	'drzw' dorszawa container (for nesting)
+	// what other serialized data??
+
+stored-in-place types:
+	'i1  ' int 1byte
+	'i2  '
+	'i4  '
+	'i8  '
+	'u1  ' uint 1byte
+	'u2  '
+	'u4  '
+	'u8  '
+	'c1  ' char 1byte
+	'c2  ' char 2byte
+	'c4  ' char 4byte
+	'w   ' 1 word (4byte)
+	'l   ' 2 words (8byte)
+	'q   ' 4 words (16byte)
+	??  n words (4byte * n)
+	
+procedure is record (28bytes + code size) of
+	name			:4byte rsrc index of string
+	args size		:4byte uint
+	return size		:4byte uint
+	clos size		:4byte uint
+	locals size		:4byte uint
+	ops size		:4byte uint
+	code size		:4byte uint (number of bytes)
+	code			variable lengh code
+	
+	// continuation-related trampoline info, other attributes
+	// like continuable, throws, etc.
+	
+string is array of characters, non-null terminated.
+	
+	const char * name; // for debugging
+	
+	int args_size;
+	int ret_size;
+	int clos_size;
+	
+	int locals_size;
+	int ops_size;
+	
+	int code_size;
+	
+	char * code;
+	cproc_t cproc;
+	
+	word_t * constants;
+	
+	

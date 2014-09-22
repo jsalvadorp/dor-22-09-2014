@@ -1,0 +1,147 @@
+#include <stdio.h> //*
+#include <stdarg.h>
+#include <stdlib.h>
+#include "cons.h"
+#include "gc.h"
+#include "types.h"
+
+void Cons_grayChildren(GCObject * this) {
+	Cons * c = (Cons *) this;
+	
+	Atom_markGray(&(c->car));
+	Atom_markGray(&(c->cdr));
+	
+	//printf("Grayed cons children \n");
+}
+
+void Cons_destroy(GCObject * this) {
+	//printf("deleted cons\n");
+	Cons * c = (Cons *) this;
+	Atom_destroy(&(c->car));
+	Atom_destroy(&(c->cdr));
+}
+
+struct GCObject_vtbl_t Cons_vtbl = {Cons_grayChildren, Cons_destroy};
+
+Atom ACons(Cons * c) {
+	Atom a;
+	a.type = ConsType;
+	a.d._Cons = c;
+	
+	return a;
+}
+
+Cons * Cons_new(Atom car, Cons * cdr) {
+	//printf("new cons\n");
+	Cons * nc = malloc(sizeof(Cons));
+	nc->_GCObject_.vptr = &Cons_vtbl;
+	GCObject_INIT(nc)
+	
+	nc->car = car;
+	nc->cdr = ACons(cdr);
+	
+	return nc;
+}
+
+Cons * Cons_newa(Atom car, Atom cdr) {
+	Cons * nc = malloc(sizeof(Cons));
+	nc->_GCObject_.vptr = &Cons_vtbl;
+	GCObject_INIT(nc)
+	
+	nc->car = car;
+	nc->cdr = cdr;
+	
+	return nc;
+}
+
+Cons * Cons_next(Cons * c) {
+	return c->cdr.d._Cons;
+}
+
+size_t Cons_length(Cons * this) {
+	if(this) return 1 + Cons_length(Cons_next(this));
+	else return 0;
+}
+
+Cons ** Cons_nextr(Cons * c) {
+	return &(c->cdr.d._Cons);
+}
+
+Cons * Cons_add(Cons ** l, Atom n) {
+	while(*l != NULL) l = Cons_nextr(*l);
+	*l = Cons_new(n, NULL);
+}
+
+Cons * Cons_append(Cons ** l, Cons * l2) {
+	while(*l != NULL) l = Cons_nextr(*l);
+	*l = l2;
+}
+
+Cons * Cons_last(Cons * l) {
+	while(l && Cons_next(l)) l = Cons_next(l);
+	return l;
+}
+
+Cons * Cons_list(size_t count, ...) {
+	va_list args;
+	
+	Cons * l = NULL;
+	Cons ** next = &l;
+	
+	va_start(args, count);
+	
+	for(size_t i = 0; i < count; i++) {
+		*next = Cons_new(va_arg(args, Atom), NULL);
+		next = Cons_nextr(*next);
+	}
+	
+	va_end(args);
+	return l;
+}
+
+
+Cons * Cons_reversed(Cons * l) {
+	Cons * newlist = NULL;
+	
+	foreach(el, l) newlist = Cons_new(el->car, newlist);
+		
+	return newlist;
+}
+
+
+Atom * Cons_at(Cons * this, size_t i) {
+	Cons * node = this;
+	
+	for (;i > 0 && node != NULL;i--)
+		node = Cons_next(node);
+	
+	assert(!i);
+	
+	return &(node->car);
+}
+
+Atom cons(Atom car, Atom cdr) {
+	return ACons(Cons_newa(car, cdr));
+}
+
+Atom list(size_t count, ...) {
+	va_list args;
+	
+	Cons * l = NULL;
+	Cons ** next = &l;
+	
+	va_start(args, count);
+	
+	for(size_t i = 0; i < count; i++) {
+		*next = Cons_new(va_arg(args, Atom), NULL);
+		next = Cons_nextr(*next);
+	}
+	
+	va_end(args);
+	return ACons(l);
+}
+
+Atom Alistcopy(Cons * list) {
+	if(list) return ACons(Cons_newa(list->car, Alistcopy(Cons_next(list))));
+	else return nil;
+}

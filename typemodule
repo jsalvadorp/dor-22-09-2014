@@ -1,0 +1,12 @@
+List a ::= Null | List a (List a)
+
+List is now a module, which exports to the current context the type List and the constructor List.
+Null is not exported; it must be referred to as List.Null. This helps to prevent namespace polution.
+
+Gender ::= Female | Male
+
+Person ::= Person 
+	name :string 
+	gender :Gender
+
+defines: Person (type), Person (constructor), Person.name, Person.gender (the latter two are fields/functions)
